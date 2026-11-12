@@ -416,19 +416,35 @@ function generateInventoryRecommendations(inventory, orders, recipients) {
 
   return recommendations;
 }
+
 // Auth Middleware
 const authMiddleware = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ error: 'No token provided' });
+
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
 
     const decoded = jwt.verify(token, JWT_SECRET);
-    req.userId = decoded.userId;
+
+    const user = await User.findById(decoded.userId).populate('role');
+
+    if (!user || !user.isActive || !user.role) {
+      return res.status(401).json({
+        error: 'User account is invalid or inactive'
+      });
+    }
+
+    req.userId = user._id;
+    req.user = user;
+
     next();
   } catch (error) {
-    res.status(401).json({ error: 'Invalid token' });
+    return res.status(401).json({ error: 'Invalid or expired token' });
   }
 };
+
 
 // ========================================
 // ROUTES
