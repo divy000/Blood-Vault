@@ -435,15 +435,28 @@ const authMiddleware = async (req, res, next) => {
 // ========================================
 
 // Auth Routes
+
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { email, password, roleName } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const { email, password } = req.body;
 
-    let role = await Role.findOne({ name: roleName });
-    if (!role) {
-      role = await Role.create({ name: roleName, permissions: [] });
+    if (!email || !password) {
+      return res.status(400).json({
+        error: 'Email and password are required'
+      });
     }
+
+    // Always assign the standard user role during public registration.
+    let role = await Role.findOne({ name: 'user' });
+
+    if (!role) {
+      role = await Role.create({
+        name: 'user',
+        permissions: []
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
       email,
@@ -451,11 +464,15 @@ app.post('/api/auth/register', async (req, res) => {
       role: role._id
     });
 
-    res.status(201).json({ message: 'User created', userId: user._id });
+    res.status(201).json({
+      message: 'User created',
+      userId: user._id
+    });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
+
 
 app.post('/api/auth/login', async (req, res) => {
   try {
